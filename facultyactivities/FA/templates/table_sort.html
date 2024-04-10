@@ -265,7 +265,7 @@
                     <div class="table-container">
                         {% for academic_year, data in grouped_data.items %}
                             <h2>{{ academic_year }}</h2>
-                            <table class="table table-bordered" id="attendanceTable">
+                            <table class="table table-bordered attendanceTable" id="attendanceTable_{{ forloop.counter }}">
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Staff Attended</th>
@@ -333,26 +333,45 @@
             }
         }
 
-        function exportToExcel(tableId) {
-            const table = document.getElementById(tableId);
-            if (!table) {
-                console.error("Table element with ID '" + tableId + "' not found.");
-                return;
-            }
-        
-            const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
-        
-            if (!wb) {
-                console.error("Failed to create workbook.");
-                return;
-            }
+        function exportToExcel() {
+            const tables = document.querySelectorAll('.attendanceTable'); // Select all tables with the class 'attendanceTable'
+
+            const wb = XLSX.utils.book_new(); // Create a new Excel workbook
+
+            tables.forEach((table, index) => {
+                const sheetName = `Sheet${index + 1}`; // Sheet name format: SheetX
+                const wsData = [];
+                const rows = table.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const rowData = [];
+                    const cells = row.querySelectorAll('td, th');
+                    cells.forEach(cell => {
+                        rowData.push(cell.innerText);
+                    });
+                    wsData.push(rowData);
+                });
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName); // Append each table as a sheet to the workbook
+            });
+
             try {
-                XLSX.writeFile(wb, "faculty_activities.xlsx", { bookType: "xlsx", bookSST: true });
+                const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'faculty_activities.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
                 console.log("Excel file generated successfully.");
             } catch (error) {
                 console.error("Error generating Excel file:", error);
             }
         }
+
+
         
 
         /*function updateRowCount()
