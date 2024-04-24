@@ -182,14 +182,13 @@
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div id="contentbox" class="content-box">
-                    <a href="details" class="back-link">Go back</a>
                     <h1>Faculty Activities</h1>
                     <p>Explore various activities and roles within the faculty community.</p>
                     <div class="btn-container">
                         <button type="button" class="btn btn-primary" onclick="toggleFilters()">
                             <i class="fas fa-filter"></i> Filter
                         </button>
-                        <button type="button" class="btn btn-primary" onclick="exportToExcel('attendanceTable')">
+                        <button type="button" class="btn btn-primary" onclick="generateExcelFromDiv()">
                             <i class="fas fa-file-excel"></i> Generate Excel
                         </button>
                     </div>
@@ -262,10 +261,10 @@
                         </div>
                     </form>
        
-                    <div class="table-container">
+                    <div class="table-container" data-academic-year="{{ academic_year }}">
                         {% for academic_year, data in grouped_data.items %}
                             <h2>{{ academic_year }}</h2>
-                            <table class="table table-bordered attendanceTable" id="attendanceTable_{{ forloop.counter }}">
+                            <table class="table table-bordered" id="attendanceTable">
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Staff Attended</th>
@@ -307,9 +306,57 @@
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+    
     <script>
         let selectedEventType = "";
         let selectedNatureEvent = "";
+
+        function generateExcelFromDiv() {
+    var tables = document.querySelectorAll('.table-bordered');
+
+    // Create a new workbook
+    var workbook = XLSX.utils.book_new();
+
+    tables.forEach(function(table, index) {
+        var wsData = [];
+
+        // Extract academic year from the previous sibling's textContent
+        var academicYear = table.previousElementSibling.textContent.trim();
+        console.log("Academic Year:", academicYear);
+
+        // Extract table headers
+        var headers = [];
+        var headerRow = table.querySelector('thead tr');
+        var headerCells = headerRow.querySelectorAll('th');
+        headerCells.forEach(function(cell) {
+            headers.push(cell.innerText);
+        });
+        wsData.push(headers);
+
+        // Extract table data
+        var rows = table.querySelectorAll('tbody tr');
+        rows.forEach(function(row) {
+            var rowData = [];
+            var cells = row.querySelectorAll('td');
+            cells.forEach(function(cell) {
+                rowData.push(cell.innerText);
+            });
+            wsData.push(rowData);
+        });
+
+        // Create a worksheet with academic year as the sheet name
+        var worksheet = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, academicYear);
+    });
+
+    // Generate Excel file with multiple sheets
+    var wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    var blob = new Blob([wbout], { type: "application/octet-stream" });
+    var link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.download = "tables.xlsx";
+    link.click();
+}
 
         function toggleFilters()
         {
@@ -332,57 +379,6 @@
                 document.removeEventListener('click', outsideClick);
             }
         }
-
-        function exportToExcel() {
-            const tables = document.querySelectorAll('.attendanceTable'); // Select all tables with the class 'attendanceTable'
-
-            const wb = XLSX.utils.book_new(); // Create a new Excel workbook
-
-            tables.forEach((table, index) => {
-                const sheetName = `Sheet${index + 1}`; // Sheet name format: SheetX
-                const wsData = [];
-                const rows = table.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const rowData = [];
-                    const cells = row.querySelectorAll('td, th');
-                    cells.forEach(cell => {
-                        rowData.push(cell.innerText);
-                    });
-                    wsData.push(rowData);
-                });
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
-                XLSX.utils.book_append_sheet(wb, ws, sheetName); // Append each table as a sheet to the workbook
-            });
-
-            try {
-                const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-                const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'faculty_activities.xlsx';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                console.log("Excel file generated successfully.");
-            } catch (error) {
-                console.error("Error generating Excel file:", error);
-            }
-        }
-
-
-        
-
-        /*function updateRowCount()
-        {
-            const table = document.getElementById("attendanceTable");
-            const rowCount = table.getElementsByTagName("tbody")[0].getElementsByTagName("tr").length;
-            const countElement = document.getElementById("rowCount");
-            countElement.textContent = rowCount;
-        }
-
-        updateRowCount();*/
 
         function applyFilters()
         {
