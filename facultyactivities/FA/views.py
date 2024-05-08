@@ -2,7 +2,7 @@ import base64
 from django.db import connection
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
-from .models import AdminLogin,FacultyLogin,SDP_attended
+from .models import AdminLogin,FacultyLogin,SDP_attended,Invited_talks
 from datetime import datetime
 from calendar import month_name
 from django.db.models import Q 
@@ -67,6 +67,23 @@ def admin_dashboard(request):
                 grouped_data[academic_year].append(obj)
 
             return render(request, 'table_sort.html', {'grouped_data': grouped_data})
+        
+        if category == 'Invited Talks':
+            if academic_year_from and academic_year_to != 'None':
+                invited_talks = Invited_talks.objects.filter(academic_year__range=[academic_year_from, academic_year_to])
+            elif academic_year_from:
+                invited_talks = Invited_talks.objects.filter(academic_year=academic_year_from)
+            else:
+                invited_talks = Invited_talks.objects.all()
+
+            grouped_data = {}
+            for obj in invited_talks:
+                academic_year = obj.academic_year
+                if academic_year not in grouped_data:
+                    grouped_data[academic_year] = []
+                grouped_data[academic_year].append(obj)
+
+            return render(request, 'it_table_sort.html', {'grouped_data': grouped_data})
 
     return render(request, 'dashboard.html')
 
@@ -81,6 +98,10 @@ def fac_dashboard(request):
         if category == 'SDP Attended':
             sdp_attended = SDP_attended.objects.filter(academic_year=yearfrom)
             return render(request, 'table_enter.html',{'sdp_attended':sdp_attended})
+        
+        if category == 'Invited Talks':
+            invited_talks = Invited_talks.objects.filter(academic_year=yearfrom)
+            return render(request, 'it_table_enter.html',{'invited_talks':invited_talks})
 
     return render(request, 'fac_login.html')
 
@@ -116,6 +137,37 @@ def detail_enter(request):
         return render(request, 'table_enter.html', {'sdp_attended': sdp_attended})
     else:
         return render(request, 'enter_details.html')
+    
+def it_detail_enter(request):
+    if request.method == 'POST':
+        faculty = request.POST.get('faculty')
+        type_of_event = request.POST.get('type_of_event')
+        name_of_event = request.POST.get('name_of_event')
+        duration = request.POST.get('duration')
+        venue = request.POST.get('venue')
+        date = request.POST.get('date')
+        topic_of_talk = request.POST.get('topic_of_talk')
+
+        academic_year_variable = request.session.get('academic_year_variable')
+
+        invited_talks = Invited_talks()
+        invited_talks.faculty = faculty
+        invited_talks.type_of_event = type_of_event
+        invited_talks.name_of_event = name_of_event
+        invited_talks.duration = duration
+        invited_talks.venue = venue
+        invited_talks.date = date
+        invited_talks.topic_of_talk = topic_of_talk
+        invited_talks.academic_year = academic_year_variable
+
+        invited_talks.save()
+        print(academic_year_variable)
+
+        invited_talks = Invited_talks.objects.filter(academic_year=academic_year_variable)
+
+        return render(request, 'it_table_enter.html', {'invited_talks': invited_talks})
+    else:
+        return render(request, 'it_enter_details.html')
 
 def goback_facdash(request):
     return render(request,'fac_dash.html')
@@ -181,8 +233,49 @@ def handle_filters(request):
                 grouped_data[year] = list(group)
 
             return render(request, 'table_sort.html', {'grouped_data': grouped_data})
-
-            return render(request, 'table_sort.html', {'sdp_attended': sdp_attended_queryset})
     except Exception as e:
         print(e)  
         return HttpResponse("An error occurred.")
+    
+def it_handle_filters(request):
+    if request.method == 'POST':
+        faculty = request.POST.get('facultyName')
+        type_of_event = request.POST.get('eventType')
+        name_of_event = request.POST.get('nameoftheevent')
+        start_month = request.POST.get('startmonth')
+        end_month = request.POST.get('endmonth')
+        venue = request.POST.get('venue')
+        date =  request.POST.get('date')
+        topic_of_talk = request.POST.get('topicOfTalk')
+
+        invited_talks_queryset = Invited_talks.objects.all()
+        if faculty:
+            invited_talks_queryset = invited_talks_queryset.filter(faculty__icontains=faculty)
+        if type_of_event:
+            invited_talks_queryset = invited_talks_queryset.filter(type_of_event__icontains=type_of_event)
+        if name_of_event:
+            invited_talks_queryset = invited_talks_queryset.filter(name_of_event__icontains=name_of_event)
+        if topic_of_talk:
+            invited_talks_queryset = invited_talks_queryset.filter(nature_of_event__icontains=topic_of_talk)
+        if venue:
+            invited_talks_queryset = invited_talks_queryset.filter(conducted_by__icontains=venue)
+        if start_month and end_month:
+                months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December']
+                if start_month in months and end_month in months:
+                    start_month = start_month.capitalize()
+                    end_month = end_month.capitalize()
+                    filters = []
+                    start_index = months.index(start_month)
+                    end_index = months.index(end_month)
+                    for i in range(start_index, end_index + 1):
+                        filters.append(Q(duration__icontains=f'-{months[i]}-'))
+                    combined_filter = reduce(lambda x, y: x | y, filters)
+                    invited_talks_queryset = invited_talks_queryset.filter(combined_filter)
+        
+        grouped_data = {}
+        sorted_queryset = sorted(invited_talks_queryset, key=lambda x: x.academic_year)
+        for year, group in groupby(sorted_queryset, key=lambda x: x.academic_year):
+            grouped_data[year] = list(group)
+
+        return render(request, 'it_table_sort.html', {'grouped_data': grouped_data})
