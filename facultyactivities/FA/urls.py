@@ -11,8 +11,11 @@ urlpatterns = [
     path('faculty',views.fac_login),
     path('fac_login',views.fac_login),
     path('entry',views.fac_dashboard),
-    path('detail_enter',views.detail_enter),
+    path('enter_detail',views.detail_enter,name="table_enter"),
     path('submit_details',views.detail_enter),
     path('goback_facdash',views.goback_facdash),
-    path('handle_filters',views.handle_filters)
+    path('handle_filters',views.handle_filters),
+    path('it_detail_enter',views.it_detail_enter),
+    path('it_submit_details',views.it_detail_enter),
+    path('it_handle_filters',views.it_handle_filters),
 ]
