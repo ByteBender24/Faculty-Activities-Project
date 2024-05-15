@@ -21,10 +21,11 @@ class SDP_attended(models.Model):
     academic_year=models.CharField(max_length=100)
     
 class SDP_organised(models.Model):
-    staff_attended=models.CharField(max_length=1000)
+    name_coord=models.CharField(max_length=1000)
     type_of_event=models.CharField(max_length=100)
     name_of_event=models.CharField(max_length=200)
     duration=models.CharField(max_length=100)
     no_of_participants=models.IntegerField()
     resource_persons=models.CharField(max_length=1000)
-    name_of_sponsors=models.CharField(max_length=200)
+    sponsors=models.CharField(max_length=200)
+    academic_year = models.CharField(max_length=100, default=timezone.now().year)
