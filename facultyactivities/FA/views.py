@@ -85,6 +85,22 @@ def admin_dashboard(request):
 
             return render(request, 'it_table_sort.html', {'grouped_data': grouped_data})
 
+        if category == 'SDP Organized':
+            if academic_year_from and academic_year_to != 'None':
+                sdp_organised = SDP_organised.objects.filter(academic_year__range=[academic_year_from, academic_year_to])
+            elif academic_year_from:
+                sdp_organised = SDP_organised.objects.filter(academic_year=academic_year_from)
+            else:
+                sdp_organised = SDP_organised.objects.all()
+            grouped_data = {}
+            for obj in sdp_organised:
+                academic_year = obj.academic_year
+                if academic_year not in grouped_data:
+                    grouped_data[academic_year] = []
+                grouped_data[academic_year].append(obj)
+
+            return render(request, 'table1_sort.html', {'grouped_data': grouped_data})
+
     return render(request, 'dashboard.html')
 
 def fac_dashboard(request):
@@ -103,7 +119,42 @@ def fac_dashboard(request):
             invited_talks = Invited_talks.objects.filter(academic_year=yearfrom)
             return render(request, 'it_table_enter.html',{'invited_talks':invited_talks})
 
+        if category == 'SDP Organized':
+            sdp_organised = SDP_organised.objects.filter(academic_year=yearfrom)
+            return render(request, 'table1_enter.html',{'sdp_organised':sdp_organised})
+
     return render(request, 'fac_login.html')
+
+def detail1_enter(request):
+    if request.method == 'POST':
+        Name_of_coord = request.POST.get('name_coord')
+        type_of_event = request.POST.get('type_of_event')
+        name_of_event = request.POST.get('name_of_event')
+        duration = request.POST.get('duration')
+        no_of_participants = request.POST.get('no_of_participants')
+        resource_persons= request.POST.get('resource_persons')
+        sponsors = request.POST.get('sponsors')
+        academic_year_variable = request.session.get('academic_year_variable')
+
+        sdp_organised=SDP_organised()
+        sdp_organised.name_coord=Name_of_coord
+        sdp_organised.type_of_event = type_of_event
+        sdp_organised.name_of_event = name_of_event
+        sdp_organised.duration=duration
+        sdp_organised.no_of_participants=no_of_participants
+        sdp_organised.resource_persons=resource_persons
+        sdp_organised.sponsors=sponsors
+        sdp_organised.academic_year = academic_year_variable
+
+
+
+        sdp_organised.save()
+
+        sdp_organised= SDP_organised.objects.filter(academic_year=academic_year_variable)
+
+        return render(request, 'table1_enter.html', {'sdp_organised':sdp_organised})
+    else:
+        return render(request, 'enter1_details.html')
 
 def detail_enter(request):
     if request.method == 'POST':
@@ -171,6 +222,58 @@ def it_detail_enter(request):
 
 def goback_facdash(request):
     return render(request,'fac_dash.html')
+
+def handle1_filters(request):
+    try:
+        if request.method == 'POST':
+            # Initialize queryset with all objects of your model
+            sdp_organised_queryset = SDP_organised.objects.all()
+            
+            name_coord = request.POST.get('coordinatorName')
+            type_of_event = request.POST.get('eventType')
+            name_of_event = request.POST.get('nameoftheevent')
+            no_of_participants = request.POST.get('noOfParticipants')
+            resource_persons= request.POST.get('resourcePerson')
+            sponsors = request.POST.get('sponsors')
+            start_month = request.POST.get('startmonth')
+            end_month = request.POST.get('endmonth')
+            
+            if name_coord:
+                sdp_organised_queryset = sdp_organised_queryset.filter(name_coord__icontains=name_coord)
+            if type_of_event:
+                sdp_organised_queryset = sdp_organised_queryset.filter(type_of_event__icontains=type_of_event)
+            if name_of_event:
+                sdp_organised_queryset = sdp_organised_queryset.filter(name_of_event__icontains=name_of_event)
+            if no_of_participants:
+                sdp_organised_queryset = sdp_organised_queryset.filter(no_of_participants__icontains=no_of_participants)
+            if resource_persons:
+                sdp_organised_queryset = sdp_organised_queryset.filter(resource_persons__icontains=resource_persons)
+            if sponsors:
+                sdp_organised_queryset = sdp_organised_queryset.filter(sponsors__icontains=sponsors)
+            if start_month and end_month:
+                months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December']
+                if start_month in months and end_month in months:
+                    start_month = start_month.capitalize()
+                    end_month = end_month.capitalize()
+                    filters = []
+                    start_index = months.index(start_month)
+                    end_index = months.index(end_month)
+                    for i in range(start_index, end_index + 1):
+                        filters.append(Q(duration__icontains=f'-{months[i]}-'))
+                    combined_filter = reduce(lambda x, y: x | y, filters)
+                    sdp_organised_queryset = sdp_organised_queryset.filter(combined_filter)
+            
+            grouped_data = {}
+            sorted_queryset = sorted(sdp_organised_queryset, key=lambda x: x.academic_year)
+            for year, group in groupby(sorted_queryset, key=lambda x: x.academic_year):
+                grouped_data[year] = list(group)
+    
+            return render(request, 'table1_sort.html', {'grouped_data': grouped_data})
+
+    except Exception as e:
+        print(e)  
+        return HttpResponse("An error occurred.")
 
 def handle_filters(request):
     try:
