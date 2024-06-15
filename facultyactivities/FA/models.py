@@ -29,3 +29,13 @@ class SDP_organised(models.Model):
     resource_persons=models.CharField(max_length=1000)
     sponsors=models.CharField(max_length=200)
     academic_year = models.CharField(max_length=100, default=timezone.now().year)
+
+class Invited_talks(models.Model):
+    faculty=models.CharField(max_length=100)
+    type_of_event=models.CharField(max_length=100)
+    name_of_event=models.CharField(max_length=500)
+    duration=models.CharField(max_length=100)
+    venue=models.CharField(max_length=100)
+    date=models.CharField(max_length=100)
+    topic_of_talk=models.CharField(max_length=100)
+    academic_year=models.CharField(max_length=100)
